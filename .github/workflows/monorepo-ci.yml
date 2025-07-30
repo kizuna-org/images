@@ -1,0 +1,72 @@
+name: Monorepo CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed_dirs: ${{ steps.changed-dirs.outputs.changed_dirs }}
+      changed: ${{ steps.changed-dirs.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get changed directories
+        id: changed-dirs
+        run: |
+          CHANGED_FILES="$(git diff --name-only "origin/$GITHUB_BASE_REF..$GITHUB_SHA")"
+          CHANGED_DIRS=""
+          while IFS= read -r FILE; do
+            DIR=$(echo "$FILE" | cut -d/ -f1)
+            if [ -d "$DIR" ]; then
+              CHANGED_DIRS="$CHANGED_DIRS$DIR\n"
+            fi
+          done <<< "$CHANGED_FILES"
+          echo -e "$CHANGED_DIRS" | uniq | jq -Rsc 'split("\n")[0:-1]' >> input.json
+          CHANGED_DIRS=$(cat input.json release-please-config.json \
+            | jq -s -r '(.[1].packages | keys) + .[0] | .[]' \
+            | sort | uniq -d | jq -Rsc 'split("\n")[0:-1]')
+          echo "changed_dirs=$CHANGED_DIRS" >> "$GITHUB_OUTPUT"
+          if [ "$(echo "$CHANGED_DIRS" | jq '. | length')" -eq 0 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+  docker-build:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.detect-changes.outputs.changed_dirs) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set outputs
+        id: vars
+        env:
+          PACKAGE: ${{ matrix.package }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          {
+            echo "tag=pr-$PULL_REQUEST_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 #v3.6.0
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Build
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          provenance: false
+          context: ${{ matrix.package }}
+          file: "${{ matrix.package }}/Dockerfile"
+          tags: ${{ steps.vars.outputs.tag }}
