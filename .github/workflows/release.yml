@@ -1,0 +1,71 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      paths_released: ${{ steps.release.outputs.paths_released }}
+      result: ${{ toJSON(steps.release.outputs) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Release please
+        uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release
+
+  docker-build:
+    needs: release-please
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.release-please.outputs.paths_released) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    if: ${{ needs.release-please.outputs.paths_released != '[]' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set outputs
+        env:
+          PACKAGE: ${{ matrix.package }}
+        id: vars
+        run: |
+          {
+            echo "tag=$(jq --arg package "$PACKAGE" -r '.[$package]' .release-please-manifest.json)"
+            echo "ghcr_repo=ghcr.io/$GITHUB_REPOSITORY_OWNER/$PACKAGE"
+          } >> "$GITHUB_OUTPUT"
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804 # v5.7.0
+        with:
+          images: |
+            ${{ steps.vars.outputs.ghcr_repo }}
+      - uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 #v3.6.0
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Build
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          push: true
+          provenance: false
+          context: ${{ matrix.package }}
+          file: "${{ matrix.package }}/Dockerfile"
+          tags: ${{ steps.vars.outputs.tag }}
+          outputs: type=image,"name=${{ steps.vars.outputs.ghcr_repo }}",push-by-digest=true,name-canonical=true,push=true
