@@ -1,7 +1,7 @@
 FROM golang:1.23 AS building
 
 # renovate: datasource=github-releases depName=fatedier/frp
-ARG FRP_VERSION=v0.63.0
+ARG FRP_VERSION=v0.64.0
 
 RUN git clone https://github.com/fatedier/frp.git -b "$FRP_VERSION" /building
 WORKDIR /building
