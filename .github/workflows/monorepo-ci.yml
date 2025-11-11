@@ -13,7 +13,7 @@ jobs:
       changed_dirs: ${{ steps.changed-dirs.outputs.changed_dirs }}
       changed: ${{ steps.changed-dirs.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Get changed directories
@@ -51,7 +51,7 @@ jobs:
       run:
         working-directory: ${{ matrix.package }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set outputs
         id: vars
         env:
