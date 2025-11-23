@@ -18,7 +18,7 @@ jobs:
       paths_released: ${{ steps.release.outputs.paths_released }}
       result: ${{ toJSON(steps.release.outputs) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Release please
@@ -37,7 +37,7 @@ jobs:
         working-directory: ${{ matrix.package }}
     if: ${{ needs.release-please.outputs.paths_released != '[]' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Set outputs
         env:
           PACKAGE: ${{ matrix.package }}
