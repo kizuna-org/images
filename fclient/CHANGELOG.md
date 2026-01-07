@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/kizuna-org/images/compare/fclient-v0.1.0...fclient-v0.1.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* **deps:** update dependency fatedier/frp to v0.66.0 ([#19](https://github.com/kizuna-org/images/issues/19)) ([2eed0f5](https://github.com/kizuna-org/images/commit/2eed0f55cb1611f1870fe0d41591b858e7a789f8))
+
 ## [0.1.0](https://github.com/kizuna-org/images/compare/fclient-v0.0.1...fclient-v0.1.0) (2025-11-13)
 
 
