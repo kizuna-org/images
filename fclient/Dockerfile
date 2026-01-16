@@ -1,4 +1,4 @@
-FROM golang:1.25@sha256:e68f6a00e88586577fafa4d9cefad1349c2be70d21244321321c407474ff9bf2 AS building
+FROM golang:1.25@sha256:bc45dfd319e982dffe4de14428c77defe5b938e29d9bc6edfbc0b9a1fc171cb3 AS building
 
 # renovate: datasource=github-releases depName=fatedier/frp
 ARG FRP_VERSION=v0.66.0
